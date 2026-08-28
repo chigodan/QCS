@@ -506,7 +506,45 @@ def _train_one(
     device: torch.device,
 ) -> tuple[nn.Module, dict[str, list[float]], float, int, float]:
     model.to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
+    # BinaryExperimentConfig keeps a multiplier of one.  Validation-only
+    # tuning configurations may expose a quantum_lr_multiplier without
+    # changing the frozen formal protocol or its saved manifests.
+    quantum_lr_multiplier = float(
+        getattr(config, "quantum_lr_multiplier", 1.0)
+    )
+    if quantum_lr_multiplier <= 0:
+        raise ValueError("quantum_lr_multiplier must be positive")
+    quantum_parameter_ids = {
+        id(parameter)
+        for module in model.modules()
+        if isinstance(module, QuantumProjection)
+        for parameter in module.parameters()
+    }
+    if quantum_parameter_ids and quantum_lr_multiplier != 1.0:
+        quantum_parameters = [
+            parameter
+            for parameter in model.parameters()
+            if id(parameter) in quantum_parameter_ids
+        ]
+        classical_parameters = [
+            parameter
+            for parameter in model.parameters()
+            if id(parameter) not in quantum_parameter_ids
+        ]
+        optimizer_parameters: object = [
+            {"params": classical_parameters, "lr": config.learning_rate},
+            {
+                "params": quantum_parameters,
+                "lr": config.learning_rate * quantum_lr_multiplier,
+            },
+        ]
+    else:
+        optimizer_parameters = model.parameters()
+    optimizer = torch.optim.AdamW(
+        optimizer_parameters,
+        lr=config.learning_rate,
+        weight_decay=config.weight_decay,
+    )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config.epochs)
     criterion = nn.CrossEntropyLoss(label_smoothing=config.label_smoothing)
     history = {"train_loss": [], "val_loss": [], "val_accuracy": [], "val_macro_f1": []}

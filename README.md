@@ -144,28 +144,23 @@ ssh -p <SSH端口> -L 8888:127.0.0.1:8888 <用户名>@<服务器地址>
 
 ## 7. 实验顺序
 
-打开：
+`QTran_三数据集公平比较实验.ipynb` 保留为早期统一入口，不再用于冻结后的
+WM-811K 和 Carinthia 正式结果。正式论文实验按以下顺序执行：
+
+1. 运行 `QTran_冻结结果与第一轮低成本筛选.ipynb`；
+2. 运行 `QTran_第二轮完整验证.ipynb`，完成15/15任务并生成唯一冻结文件；
+3. 运行 `QTran_WM811K_五投影正式实验.ipynb`；
+4. 运行 `QTran_Carinthia_五投影正式实验.ipynb`；
+5. 三个数据集主结果全部冻结后，再运行跨数据集汇总、噪声和消融实验。
+
+两个正式 Notebook 都会读取：
 
 ```text
-QTran_三数据集公平比较实验.ipynb
+artifacts/stability_search_stage2/mixedwm38/frozen_stage2_selection.json
 ```
 
-按顺序执行：
-
-1. 路径检查；
-2. 分别生成三个32×32缓存；
-3. MixedWM38 审计和2轮 Smoke Test；
-4. MixedWM38 正式单种子；
-5. Carinthia Smoke Test及正式单种子；
-6. 扩展到五个种子；
-7. 最后运行跨数据集汇总和配对统计。
-
-每次通过以下变量选择一个数据集：
-
-```python
-DATASET_TO_RUN = 'mixedwm38'
-# 可选：'wm811k'、'mixedwm38'、'carinthia'
-```
+并由 `qcs_frozen_benchmark.py` 强制核对文件哈希、数据缓存、模型列表、随机
+种子和数据切分。正式结果目录存在不兼容文件时，程序会停止而不是覆盖。
 
 正式实验结果保存在：
 
@@ -178,6 +173,53 @@ artifacts/three_datasets_five_projection/
 
 不同数据集、三投影旧模型和五投影新模型不得共用检查点。
 
+### 冻结后的 WM-811K 正式实验
+
+```text
+QTran_WM811K_五投影正式实验.ipynb
+```
+
+使用固定的 lot 隔离训练/验证/测试切分，运行四模型×五种子，共20个任务。
+结果保存在：
+
+```text
+artifacts/three_datasets_five_projection/wm811k/
+```
+
+### 冻结后的 Carinthia 正式实验
+
+```text
+QTran_Carinthia_五投影正式实验.ipynb
+```
+
+由于最少类别只有4张图，使用4折外层测试和每折内部验证，运行四模型×五
+种子×四折，共80个任务。每个模型和种子的四折测试预测会拼接为覆盖全部
+样本一次的 OOF 结果；论文主表使用种子级 OOF 指标，不把四折当作独立重复。
+结果保存在：
+
+```text
+artifacts/three_datasets_five_projection/carinthia/
+```
+
+### QTran 第二轮完整验证
+
+完成 `QTran_冻结结果与第一轮低成本筛选.ipynb` 的36个任务并生成
+`artifacts/stability_search_v2/mixedwm38/top2_candidates.csv` 后，运行：
+
+```text
+QTran_第二轮完整验证.ipynb
+```
+
+该 Notebook 使用第一轮 Top2、原始 QTran 对照和5个全新开发种子，共15个
+完整预算任务。结果保存在：
+
+```text
+artifacts/stability_search_stage2/mixedwm38/
+```
+
+第二轮只访问训练集和验证集。15个任务完成后才会生成
+`frozen_stage2_selection.json`，本阶段不产生测试集结果。
+
 ## 8. 工程文件
 
 ```text
@@ -186,7 +228,14 @@ qcs_core.py                           三数据集共用模型、训练、评价
 qcs_datasets.py                       三数据集下载后处理、缓存和划分
 qcs_multidataset.py                   断点续跑、五种子、统计及噪声实验
 qcs_fair_tuning.py                    原验证集公平调参模块
+qcs_screening.py                      第一轮低成本验证筛选与结果冻结
+qcs_stage2.py                         第二轮完整预算验证、续跑与配置冻结
+qcs_frozen_benchmark.py               冻结配置驱动的WM-811K/Carinthia正式协议
 QTran_三数据集公平比较实验.ipynb       三数据集主入口
+QTran_冻结结果与第一轮低成本筛选.ipynb  第一轮稳定性筛选入口
+QTran_第二轮完整验证.ipynb              第二轮验证与唯一配置冻结入口
+QTran_WM811K_五投影正式实验.ipynb       WM-811K lot隔离20任务正式入口
+QTran_Carinthia_五投影正式实验.ipynb    Carinthia四折OOF 80任务正式入口
 WM811K_Quantum_Transformer_公平比较实验.ipynb  旧实验复现
 WM811K_QTran_公平自动调参.ipynb         旧调参复现
 setup_env.sh                          pip环境配置
@@ -194,13 +243,71 @@ download_datasets.sh                  三数据集下载与校验
 verify_setup.py                       环境和数据检查
 ```
 
-## 9. 官方安装与数据来源
+## 9. SECOM 与 UCR Wafer 平衡二分类实验
+
+两个数据集都是被多篇同行评议研究使用的公开基准。运行入口为：
+
+```text
+QTrans_SECOM_平衡二分类正式实验.ipynb
+QTrans_UCR_Wafer_平衡二分类正式实验.ipynb
+```
+
+共享实现在 `qcs_balanced_binary.py`。SECOM 将全部 104 个少数类与固定
+抽取的 104 个多数类组成 208 个样本，运行四模型×五种子×五折，
+共 100 个任务；论文统计使用每个种子覆盖全部 208 个样本一次的 OOF
+预测。UCR Wafer 保留官方 TRAIN/TEST 边界，在两侧分别固定下采样
+为 1:1，运行四模型×五种子，共 20 个任务。
+
+两个协议均用验证交叉熵最小值选检查点，不用测试集调参，四模型可训练
+参数差不超过 1%，并固定数据索引、原文件 SHA-256 和完整协议签名。
+结果保存到：
+
+```text
+artifacts/balanced_binary_qtrans/
+├── secom/
+└── ucr_wafer/
+```
+
+这些是固定的平衡派生协议，不得将结果直接写成 UCI 或 UCR 官方全数据
+排行结果，也不得按测试集挑选种子。
+
+### 平衡二分类公平嵌套调参
+
+旧版正式结果完成后，如需诊断 epoch、学习率和量子优化设定，运行：
+
+```text
+QTrans_平衡二分类公平嵌套调参.ipynb
+```
+
+实现在 `qcs_balanced_nested_tuning.py`。UCR Wafer 调参只打开官方
+`Wafer_TRAIN.txt`，运行四模型×八候选×三折×两次重复，共 192 个
+验证任务。SECOM 保留五个外层测试折，每个外折内运行四模型
+×八候选×三内折，共 480 个验证任务。两者均按「平均验证
+Macro-F1 - 0.25×标准差」冻结配置，并记录最佳 epoch 相对最大轮数的
+位置用于判断是否训练不足。
+
+调参结果保存在：
+
+```text
+artifacts/balanced_binary_nested_tuning/
+├── ucr_wafer/
+└── secom/
+```
+
+该 Notebook 不提供测试评估入口。完成全部任务后才会生成
+`frozen_nested_selection.json`；新配置的正式评估必须使用另一个只读
+冻结文件的 Notebook。由于旧版模型已查看过当前测试汇总结果，新调参
+属于新一轮模型开发，不得冒充为事前预注册试验。
+
+## 10. 官方安装与数据来源
 
 - PyTorch CUDA 11.8：<https://pytorch.org/get-started/previous-versions/>
 - DeepQuantum：<https://github.com/TuringQ/deepquantum>
 - WM-811K：<https://www.kaggle.com/datasets/qingyi/wm811k-wafer-map>
 - MixedWM38：<https://www.kaggle.com/datasets/co1d7era/mixedtype-wafer-defect-datasets>
 - Carinthia：<https://zenodo.org/records/10715190>
+- SECOM：<https://archive.ics.uci.edu/dataset/179/secom>
+- UCR/UEA Wafer：<https://timeseriesclassification.com/description.php?Dataset=Wafer>
 
 
 /root/xxx/autodl/
