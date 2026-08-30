@@ -1,0 +1,15 @@
+# PyTorch is intentionally installed first by setup_env.sh from the official
+# CUDA 11.8 wheel index. Do not add an unqualified torch entry here.
+deepquantum==4.5.0
+ipykernel>=6.29,<7
+jupyterlab>=4.2,<5
+kaggle>=1.7,<2
+matplotlib>=3.8,<4
+nbformat>=5.10,<6
+numpy>=1.26,<3
+pandas>=2.2,<3
+Pillow>=10,<12
+psutil>=5.9,<8
+scikit-learn>=1.4,<2
+scipy>=1.12,<2
+tqdm>=4.66,<5

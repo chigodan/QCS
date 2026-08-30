@@ -1,0 +1,13 @@
+# Install CUDA-enabled torch/torchvision first with:
+# uv pip install torch torchvision --torch-backend=auto
+deepquantum==4.5.0
+ipykernel>=6.29
+jupyterlab>=4.2
+matplotlib>=3.8
+numpy>=1.26
+pandas>=2.2
+Pillow>=10.0
+psutil>=5.9
+scikit-learn>=1.4
+scipy>=1.12
+tqdm>=4.66

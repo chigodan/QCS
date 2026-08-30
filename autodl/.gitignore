@@ -4,11 +4,10 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Raw datasets, converted caches, checkpoints and generated results are local.
-data/
-data_cache/
-artifacts/
-runs/
-LSWMD.pkl
+# data/
+# data_cache/
+# artifacts/
+# runs/
 *.log
 
 .vscode/
